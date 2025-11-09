@@ -1,0 +1,145 @@
+/* Import Flexible Layout Utilities */
+@import './FlexibleLayout.css';
+
+/* Reset and base styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+  overflow: hidden;
+}
+
+/* IDE Layout */
+.ide-container {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  position: relative;
+}
+
+.sidebar {
+  width: 250px;
+  min-width: 200px;
+  max-width: 600px;
+  background-color: #252526;
+  border-right: 1px solid #3c3c3c;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.toolbar {
+  height: 40px;
+  min-height: 40px;
+  background-color: #2d2d30;
+  border-bottom: 1px solid #3c3c3c;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  flex-shrink: 0;
+}
+
+.editor-area {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.terminal-area {
+  height: 200px;
+  min-height: 100px;
+  max-height: 80vh;
+  background-color: #1e1e1e;
+  border-top: 1px solid #3c3c3c;
+}
+
+/* Monaco Editor styling */
+.monaco-editor {
+  font-family: 'Fira Code', 'Monaco', 'Menlo', 'Ubuntu Mono', monospace !important;
+}
+
+/* File tree styling */
+.file-tree {
+  padding: 8px;
+}
+
+.file-tree-item {
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: 4px;
+  user-select: none;
+}
+
+.file-tree-item:hover {
+  background-color: #2a2d2e;
+}
+
+.file-tree-item.selected {
+  background-color: #094771;
+}
+
+/* Terminal styling */
+.terminal-container {
+  height: 100%;
+  background-color: #0c0c0c;
+}
+
+/* Button styles */
+.btn {
+  background-color: #0e639c;
+  color: white;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.btn:hover {
+  background-color: #1177bb;
+}
+
+.btn:disabled {
+  background-color: #3c3c3c;
+  cursor: not-allowed;
+}
+
+/* Input styles */
+.input {
+  background-color: #3c3c3c;
+  border: 1px solid #464647;
+  color: #cccccc;
+  padding: 4px 8px;
+  border-radius: 2px;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #007acc;
+}
