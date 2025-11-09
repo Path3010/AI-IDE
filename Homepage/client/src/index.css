@@ -1,0 +1,132 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(0 0% 100%);
+  --foreground: hsl(0 0% 80%);
+  --card: hsl(225 10% 15%);
+  --card-foreground: hsl(0 0% 80%);
+  --popover: hsl(225 10% 15%);
+  --popover-foreground: hsl(0 0% 80%);
+  --primary: hsl(203.8 88.3% 53.1%);
+  --primary-foreground: hsl(0 0% 100%);
+  --secondary: hsl(225 10% 15%);
+  --secondary-foreground: hsl(0 0% 100%);
+  --muted: hsl(0 0% 9.4%);
+  --muted-foreground: hsl(0 0% 50.2%);
+  --accent: hsl(225 10% 15%);
+  --accent-foreground: hsl(203.8 88.3% 53.1%);
+  --destructive: hsl(0 84.2% 60.2%);
+  --destructive-foreground: hsl(0 0% 100%);
+  --border: hsl(225 10% 25%);
+  --input: hsl(225 15% 18%);
+  --ring: hsl(203.8 88.3% 53.1%);
+  --radius: 0.5rem;
+  
+  /* VS Code inspired colors */
+  --vscode-dark: hsl(225 9% 12%);
+  --vscode-secondary: hsl(225 9% 15%);
+  --vscode-blue: hsl(203.8 88.3% 53.1%);
+  --vscode-green: hsl(158 58% 62%);
+  --vscode-yellow: hsl(51 100% 78%);
+  --vscode-text: hsl(0 0% 80%);
+  --vscode-text-secondary: hsl(0 0% 50.2%);
+  --vscode-border: hsl(225 7% 26%);
+  
+  /* Fonts */
+  --font-inter: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+.dark {
+  --background: hsl(225 9% 12%);
+  --foreground: hsl(0 0% 80%);
+  --card: hsl(225 10% 15%);
+  --card-foreground: hsl(0 0% 80%);
+  --popover: hsl(225 10% 15%);
+  --popover-foreground: hsl(0 0% 80%);
+  --primary: hsl(203.8 88.3% 53.1%);
+  --primary-foreground: hsl(0 0% 100%);
+  --secondary: hsl(225 10% 15%);
+  --secondary-foreground: hsl(0 0% 100%);
+  --muted: hsl(0 0% 9.4%);
+  --muted-foreground: hsl(0 0% 50.2%);
+  --accent: hsl(225 10% 15%);
+  --accent-foreground: hsl(203.8 88.3% 53.1%);
+  --destructive: hsl(0 84.2% 60.2%);
+  --destructive-foreground: hsl(0 0% 100%);
+  --border: hsl(225 10% 25%);
+  --input: hsl(225 15% 18%);
+  --ring: hsl(203.8 88.3% 53.1%);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-vscode-dark text-vscode-text font-inter antialiased;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer utilities {
+  .bg-vscode-dark {
+    background-color: var(--vscode-dark);
+  }
+  
+  .bg-vscode-secondary {
+    background-color: var(--vscode-secondary);
+  }
+  
+  .text-vscode-blue {
+    color: var(--vscode-blue);
+  }
+  
+  .text-vscode-green {
+    color: var(--vscode-green);
+  }
+  
+  .text-vscode-yellow {
+    color: var(--vscode-yellow);
+  }
+  
+  .text-vscode-text {
+    color: var(--vscode-text);
+  }
+  
+  .text-vscode-text-secondary {
+    color: var(--vscode-text-secondary);
+  }
+  
+  .border-vscode-border {
+    border-color: var(--vscode-border);
+  }
+  
+  .border-vscode-blue {
+    border-color: var(--vscode-blue);
+  }
+  
+  .hover\:text-vscode-blue:hover {
+    color: var(--vscode-blue);
+  }
+  
+  .hover\:border-vscode-blue:hover {
+    border-color: var(--vscode-blue);
+  }
+  
+  .font-inter {
+    font-family: var(--font-inter);
+  }
+  
+  .font-mono {
+    font-family: var(--font-mono);
+  }
+}
