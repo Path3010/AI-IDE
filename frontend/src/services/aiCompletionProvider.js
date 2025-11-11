@@ -70,7 +70,19 @@ export class AICompletionProvider {
         return { items: [] };
       },
 
-      freeInlineCompletions: () => {}
+      freeInlineCompletions: (completions) => {
+        // Clean up any resources associated with completions
+      },
+
+      // Support for newer Monaco Editor versions
+      handleItemDidShow: (completions, item) => {
+        // Called when completion is shown
+      },
+
+      // Required for proper disposal in newer Monaco versions
+      disposeInlineCompletions: (completions) => {
+        // Properly dispose of completions
+      }
     });
 
     return provider;

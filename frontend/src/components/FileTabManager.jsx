@@ -219,7 +219,33 @@ const FileTabManager = ({ theme = 'dark' }) => {
         break;
       case 'html':
       case 'htm':
-        command = `echo "✅ Opening ${fileName} in browser..."`;
+        // Open HTML file in new tab using blob URL
+        console.log('=== HTML PREVIEW (FileTabManager) ===');
+        console.log('Opening HTML file:', fileName);
+        console.log('File content length:', currentFile.content?.length);
+        
+        try {
+          const blob = new Blob([currentFile.content], { type: 'text/html' });
+          const blobUrl = URL.createObjectURL(blob);
+          console.log('Created blob URL:', blobUrl);
+          
+          const newWindow = window.open(blobUrl, '_blank', 'noopener,noreferrer');
+          
+          if (newWindow) {
+            console.log('✅ HTML preview opened successfully!');
+            command = `echo "✅ Opening ${fileName} in browser..." && echo "HTML file opened in new tab!" && echo "Blob URL: ${blobUrl}"`;
+            
+            // Cleanup after 5 seconds
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+          } else {
+            console.warn('⚠️ Popup blocked!');
+            alert(`Popup Blocked!\n\nYour browser blocked the HTML preview.\n\nPlease:\n1. Allow popups for localhost:3000\n2. Try again\n\nOr manually open: ${blobUrl}`);
+            command = `echo "⚠️ Popup blocked!" && echo "Please allow popups and try again." && echo "Blob URL: ${blobUrl}"`;
+          }
+        } catch (error) {
+          console.error('Error opening HTML:', error);
+          command = `echo "❌ Error: ${error.message}"`;
+        }
         break;
       case 'css':
         command = `echo "=== CSS File: ${fileName} ===" && cat ${fileName}`;

@@ -44,6 +44,42 @@ const CodeExecution = ({
         onExecutionStart();
       }
 
+      // Special handling for HTML files
+      if (language === 'html' || language === 'htm') {
+        setIsExecuting(false);
+        setOutput('Opening HTML file in new tab...');
+        
+        // Create a blob URL from the HTML content
+        const blob = new Blob([code], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        
+        // Clean up blob URL after a delay
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        
+        if (onExecutionComplete) {
+          onExecutionComplete({ 
+            output: '✅ HTML opened in new browser tab',
+            status: 'completed'
+          });
+        }
+        return;
+      }
+
+      // Special handling for JSX/TSX files
+      if (language === 'jsx' || language === 'tsx' || language === 'javascriptreact' || language === 'typescriptreact') {
+        setIsExecuting(false);
+        setError('⚠️ JSX/React files cannot be executed directly. They need to be part of a React application with a build system (Webpack, Vite, etc.).\n\nTry:\n1. Create a React project\n2. Use the terminal to run: npx create-react-app my-app\n3. Add your component to the project\n4. Run: npm start');
+        
+        if (onExecutionComplete) {
+          onExecutionComplete({ 
+            error: 'JSX requires React environment',
+            status: 'failed'
+          });
+        }
+        return;
+      }
+
       // Start execution
       const response = await fetch('/api/v1/execution/run', {
         method: 'POST',
@@ -306,7 +342,13 @@ const CodeExecution = ({
               <span className="result-icon">📄</span>
               <span className="result-title">Output</span>
             </div>
-            <pre className="result-content">{output}</pre>
+            {language === 'html' || language === 'htm' ? (
+              <div className="result-content html-output">
+                {output}
+              </div>
+            ) : (
+              <pre className="result-content">{output}</pre>
+            )}
           </div>
         )}
 

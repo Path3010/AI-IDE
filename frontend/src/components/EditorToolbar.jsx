@@ -15,6 +15,9 @@ const EditorToolbar = () => {
   const [showExecutionPanel, setShowExecutionPanel] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
 
+  // Force reload - updated at 20:15
+  console.log('EditorToolbar component loaded - v2.0');
+
   // Get language from current file
   const getLanguageFromFile = (file) => {
     if (!file?.name) return 'javascript';
@@ -188,13 +191,63 @@ const EditorToolbar = () => {
         break;
       case 'html':
       case 'htm':
-        // Open HTML in new tab via backend preview endpoint
-        if (user && currentProject) {
-          const previewUrl = `http://localhost:3001/api/v1/preview/${user.id}/${currentProject.id}?file=${encodeURIComponent(fileName)}`;
-          window.open(previewUrl, '_blank');
+        // For HTML files, create a preview using blob URL (works without backend)
+        if (currentFile && currentFile.content) {
+          try {
+            console.log('=== HTML PREVIEW DEBUG ===');
+            console.log('Current file:', currentFile);
+            console.log('File content length:', currentFile.content?.length);
+            
+            // Create blob from HTML content
+            const blob = new Blob([currentFile.content], { type: 'text/html' });
+            const blobUrl = URL.createObjectURL(blob);
+            
+            console.log('Created blob URL:', blobUrl);
+            console.log('About to open window...');
+            
+            // Open in new tab immediately - no setTimeout
+            const newWindow = window.open(blobUrl, '_blank', 'noopener,noreferrer');
+            
+            console.log('window.open returned:', newWindow);
+            
+            if (newWindow) {
+              console.log('✅ HTML preview opened successfully');
+              command = `echo "✅ Opening ${fileName} in browser..." && echo "HTML preview opened in new tab!" && echo "Blob URL: ${blobUrl}"`;
+              
+              // Clean up blob URL after a delay
+              setTimeout(() => {
+                URL.revokeObjectURL(blobUrl);
+                console.log('Blob URL cleaned up');
+              }, 5000);
+            } else {
+              console.warn('⚠️ Popup was blocked by browser!');
+              alert(`Popup Blocked!\n\nYour browser blocked the HTML preview.\n\nPlease:\n1. Click the popup blocker icon in the address bar\n2. Allow popups from localhost:3000\n3. Try again\n\nOr copy this URL and paste in a new tab:\n${blobUrl}`);
+              command = `echo "⚠️  Popup was blocked!" && echo "Please allow popups for this site to preview HTML files." && echo "Blob URL: ${blobUrl}"`;
+            }
+          } catch (error) {
+            console.error('Error creating HTML preview:', error);
+            command = `echo "❌ Error creating preview: ${error.message}"`;
+          }
+        } else if (user && currentProject) {
+          console.log('Fallback to backend preview');
+          // Fallback to backend preview endpoint
+          const userId = user._id || user.id;
+          const projectId = currentProject._id || currentProject.id;
+          
+          if (!userId || !projectId) {
+            console.error('Missing IDs:', { userId, projectId });
+            command = `echo "❌ Error: Missing user or project ID"`;
+            break;
+          }
+          
+          const previewUrl = `http://localhost:3001/api/v1/preview/${userId}/${projectId}?file=${encodeURIComponent(fileName)}`;
+          console.log('Using backend preview URL:', previewUrl);
+          
+          window.open(previewUrl, '_blank', 'noopener,noreferrer');
           command = `echo "✅ Opening ${fileName} in browser..." && echo "Preview URL: ${previewUrl}"`;
         } else {
-          command = `echo "⚠️  Cannot preview: User or project not loaded" && cat ${fileName}`;
+          console.error('No file content and no user/project for fallback');
+          command = `echo "⚠️  Cannot preview: File content not loaded" && cat ${fileName}`;
         }
         break;
       case 'css':
