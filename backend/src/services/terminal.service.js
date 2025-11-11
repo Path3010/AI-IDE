@@ -277,19 +277,75 @@ class TerminalService {
       await mkdir(tempDir, { recursive: true });
 
       try {
+        // Filter out cache and build artifacts
+        const validFiles = files.filter(file => {
+          const path = file.path || '';
+          // Skip cache directories, build artifacts, and other non-essential files
+          const skipPatterns = [
+            /\.cache/i,
+            /node_modules/i,
+            /\.git/i,
+            /__pycache__/i,
+            /\.pytest_cache/i,
+            /\.mypy_cache/i,
+            /target\/debug/i,
+            /target\/release/i,
+            /build\//i,
+            /dist\//i,
+            /\.gradle/i,
+            /\.maven/i,
+            /\.idea/i,
+            /\.vscode/i,
+            /\.DS_Store/i
+          ];
+          
+          return !skipPatterns.some(pattern => pattern.test(path));
+        });
+
+        logger.info(`Filtered files: ${files.length} -> ${validFiles.length}`, { 
+          projectId,
+          skipped: files.length - validFiles.length 
+        });
+
         // Write all files to temp directory
-        for (const file of files) {
-          const content = file.content || '';
-          const fileName = file.path.startsWith('/') ? file.path.substring(1) : file.path;
-          const tempFilePath = join(tempDir, fileName.replace(/\//g, '_'));
-          
-          await writeFile(tempFilePath, content, 'utf8');
-          
-          logger.debug('Wrote temp file', { 
-            fileName,
-            tempFilePath,
-            size: content.length 
-          });
+        for (const file of validFiles) {
+          try {
+            const content = file.content || '';
+            let fileName = file.path.startsWith('/') ? file.path.substring(1) : file.path;
+            
+            // Remove null bytes and other invalid characters
+            fileName = fileName.replace(/\0/g, '').replace(/[<>:"|?*\x00-\x1f]/g, '_');
+            
+            // Replace forward slashes with underscores
+            fileName = fileName.replace(/\//g, '_');
+            
+            // Truncate excessively long filenames (Windows MAX_PATH is 260, leave room for temp dir)
+            const maxLength = 200;
+            if (fileName.length > maxLength) {
+              const ext = fileName.lastIndexOf('.') > 0 ? fileName.substring(fileName.lastIndexOf('.')) : '';
+              fileName = fileName.substring(0, maxLength - ext.length) + ext;
+              logger.warn('Truncated long filename', { 
+                original: file.path,
+                truncated: fileName 
+              });
+            }
+            
+            const tempFilePath = join(tempDir, fileName);
+            
+            await writeFile(tempFilePath, content, 'utf8');
+            
+            logger.debug('Wrote temp file', { 
+              fileName,
+              tempFilePath,
+              size: content.length 
+            });
+          } catch (fileError) {
+            logger.error('Failed to write temp file', {
+              path: file.path,
+              error: fileError.message
+            });
+            // Continue with other files
+          }
         }
 
         // Copy files to container using Docker API
@@ -297,30 +353,41 @@ class TerminalService {
         const tar = tarModule.default || tarModule;
         const pack = tar.pack();
 
-        logger.info('Creating tar archive with project files...', { fileCount: files.length });
+        logger.info('Creating tar archive with project files...', { fileCount: validFiles.length });
 
         // Add each file to tar
-        for (const file of files) {
-          const content = file.content || '';
-          const filePath = file.path.startsWith('/') ? file.path.substring(1) : file.path;
-          
-          // Create directories if needed
-          const dirPath = filePath.includes('/') ? filePath.substring(0, filePath.lastIndexOf('/')) : '';
-          if (dirPath) {
-            try {
-              await dockerService.executeCommand(container.id, `mkdir -p /workspace/${dirPath}`);
-            } catch (mkdirErr) {
-              logger.debug('mkdir failed (may already exist)', { dirPath });
+        for (const file of validFiles) {
+          try {
+            const content = file.content || '';
+            let filePath = file.path.startsWith('/') ? file.path.substring(1) : file.path;
+            
+            // Remove null bytes and sanitize path
+            filePath = filePath.replace(/\0/g, '');
+            
+            // Create directories if needed
+            const dirPath = filePath.includes('/') ? filePath.substring(0, filePath.lastIndexOf('/')) : '';
+            if (dirPath) {
+              try {
+                await dockerService.executeCommand(container.id, `mkdir -p /workspace/${dirPath}`);
+              } catch (mkdirErr) {
+                logger.debug('mkdir failed (may already exist)', { dirPath });
+              }
             }
-          }
 
-          // Add file to tar stream
-          pack.entry({ name: filePath }, content);
-          
-          logger.debug('✅ Added file to tar', { 
-            path: filePath,
-            size: content.length
-          });
+            // Add file to tar stream
+            pack.entry({ name: filePath }, content);
+            
+            logger.debug('✅ Added file to tar', { 
+              path: filePath,
+              size: content.length
+            });
+          } catch (fileError) {
+            logger.error('Failed to add file to tar', {
+              path: file.path,
+              error: fileError.message
+            });
+            // Continue with other files
+          }
         }
 
         pack.finalize();
@@ -1190,6 +1257,24 @@ class TerminalService {
         
         // Try to recreate the stream
         try {
+          // Verify container still exists before trying to recreate
+          if (!terminal.container || !terminal.container.container) {
+            throw new Error('Container reference lost');
+          }
+
+          // Check if container still exists in Docker
+          try {
+            const containerInfo = await terminal.container.container.inspect();
+            if (!containerInfo.State.Running) {
+              throw new Error(`Container not running (status: ${containerInfo.State.Status})`);
+            }
+          } catch (inspectError) {
+            if (inspectError.statusCode === 404) {
+              throw new Error('Container no longer exists in Docker');
+            }
+            throw inspectError;
+          }
+
           // Create new exec instance with proper TTY settings
           const exec = await terminal.container.container.exec({
             Cmd: ['/bin/bash'],
@@ -1244,9 +1329,31 @@ class TerminalService {
             terminalId,
             error: recreateError.message
           });
+          
+          // Clean up the terminal from our tracking
+          this.terminals.delete(terminalId);
+          
+          // Send specific error message based on error type
+          let errorMessage = 'Terminal session ended. Please reconnect.';
+          if (recreateError.message.includes('Container no longer exists')) {
+            errorMessage = 'Container has been stopped. Please create a new terminal session.';
+          } else if (recreateError.message.includes('not running')) {
+            errorMessage = 'Container is not running. Please restart the terminal.';
+          }
+          
+          // Send error to frontend
+          if (ws.readyState === 1) {
+            ws.send(JSON.stringify({
+              type: 'error',
+              terminalId,
+              message: errorMessage
+            }));
+          }
+          
+          return; // Don't try to cleanup further
         }
         
-        // If recreation failed, send error to frontend
+        // If recreation failed for other reasons, send error to frontend
         if (ws.readyState === 1) {
           ws.send(JSON.stringify({
             type: 'error',
@@ -1605,6 +1712,41 @@ class TerminalService {
           projectId
         });
         return;
+      }
+
+      // Verify container still exists in Docker service
+      const containerInfo = dockerService.containers.get(container.id);
+      if (!containerInfo) {
+        logger.warn('Container no longer exists in Docker service, removing from cache', {
+          containerId: container.id,
+          containerKey
+        });
+        this.projectContainers.delete(containerKey);
+        return;
+      }
+
+      // Verify container is running
+      try {
+        const dockerContainer = dockerService.docker.getContainer(container.id);
+        const inspection = await dockerContainer.inspect();
+        
+        if (!inspection.State.Running) {
+          logger.warn('Container is not running, cannot sync file', {
+            containerId: container.id,
+            state: inspection.State.Status
+          });
+          return;
+        }
+      } catch (inspectError) {
+        if (inspectError.statusCode === 404) {
+          logger.warn('Container not found in Docker, removing from cache', {
+            containerId: container.id,
+            containerKey
+          });
+          this.projectContainers.delete(containerKey);
+          return;
+        }
+        throw inspectError;
       }
 
       // Normalize file path
